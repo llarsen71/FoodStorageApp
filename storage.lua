@@ -1,49 +1,97 @@
+local sjson = require('sjson')
 
--- Store number of cans in and number of cans out
-local cans = {}
+--=============================================================================
 
-function addCan(bin)
-  if not cans[bin] then cans[bin] = {num = 0} end
-  cans[bin].num = cans[bin].num + 1
+function newBin(type_)
+  return {num_cans = 0, type_ = type_}
 end
 
-function subtractCan(bin)
-  if not cans[bin] then return end
-  cans[bin].num = math.max(0, cans[bin].num - 1)
+--=============================================================================
+
+local storage = {}
+
+--=============================================================================
+
+function addCan(bin_num)
+  if not storage[bin_num] then storage[bin_num] = newBin() end
+  storage[bin_num].num_cans = storage[bin_num].num_cans + 1
 end
 
-function setBinType(bin, type_)
-  if not cans[bin] then cans[bin] = {num = 0} end
-  cans[bin].type_ = type_
+--=============================================================================
+
+function removeCan(bin_num)
+  if not storage[bin_num] then return end
+  storage[bin_num].num_cans = math.max(0, storage[bin_num].num_cans - 1)
 end
 
-function showCans()
-  for bin, item in pairs(cans) do
-    if item.type_ then
-      print(string.format("Bin: %s, cans: %s, type: %s", bin, item.num, item.type_))
-    else
-      print(string.format("Bin: %s, cans: %s", bin, item.num))      
-    end
+--=============================================================================
+
+function setBinType(bin_num, type_)
+  if not storage[bin_num] then 
+    storage[bin_num] = newBin(type_)
+    return
+  end
+  
+  storage[bin_num].type_ = type_
+end
+
+--=============================================================================
+
+function showStorage()
+  for bin_num, bin in pairs(storage) do
+    local type_ = (bin.type_) and string.format("Type: %s", bin.type_) or ""
+    print(string.format("Bin: %s  Cans: %s %s", bin_num, bin.num_cans, type_))
   end
   print()
 end
 
+--=============================================================================
 
-setBinType(1, "olives")
-addCan(1)
-addCan(1)
-addCan(1)
-showCans()
+function makeCSV()
+  local CSV = {"Bin number,Number of cans,Type"}
+  for bin_num, bin in pairs(storage) do
+    table.insert(CSV, string.format("%s,%s,%s", bin_num, bin.num_cans, bin.type_ or ""))
+  end
+  return table.concat(CSV, "\r\n")
+end
 
-addCan(2)
-addCan(2)
-showCans()
+--=============================================================================
 
-subtractCan(2)
-addCan(3)
-addCan(3)
-showCans()
+function makeHTML()
+  local HTML = {[[
+<html>
+<body>
+<table border=1>
+<tr> <th> Bin Number</th><th>Number of Cans</th><th>Type</th></tr>
+]]}
+  for bin_num, bin in pairs(storage) do
+    table.insert(HTML, string.format("<tr> <td>%s</td><td>%s</td><td>%s</td></tr>", bin_num, bin.num_cans, bin.type_ or ""))
+  end
+  table.insert(HTML,[[</table></body></html>]])
+  return table.concat(HTML, "\r\n")
+end
 
-subtractCan(2)
-subtractCan(2)
-showCans()
+--=============================================================================
+
+file = io
+
+--=============================================================================
+
+function loadStorage()
+  local ofile = file.open("storage.dat", "r")
+  if not ofile then return false end
+  
+  local contents = ofile:read()
+  storage = sjson.decode(contents)
+  return true
+end
+
+--=============================================================================
+
+function saveStorage()
+  local ofile = file.open("storage.dat", "w")
+  ofile:write(sjson.encode(storage))
+end
+
+--=============================================================================
+
